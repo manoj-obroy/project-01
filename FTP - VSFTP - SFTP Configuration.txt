@@ -1,0 +1,209 @@
+FTP Configuration:
+
+should have;
+client server
+Remote server
+                                                                            ## ufw ? ##
+################################################################################################
+REMOTE SERVER FTP SETUP :
+
+-# rpm -qa |grep vsftpd
+
+-# yum install vsftpd -y
+
+-# cd /etc/vsftpd/
+
+-# cp vsftpd.conf vsftpd.conf.org                             ### for backup ###
+
+-# vim vsftpd.conf
+
+<<in editor>>
+<< edit this lines >>
+------------------------------------------------------------------------------------
+anonymous_enable=NO
+
+## UNCOMMENT THIS LINES ##
+
+ascii_upload_enable=YES
+ascii_download_enable=YES
+
+## MAY ADD ##
+
+use_localtime=YES                                           ### add this line at the end ###
+
+------------------------------------------------------------------------------------
+################################################################################################
+
+-# systemctl start vsftpd
+
+-# systemctl enable vsftpd
+
+-# systemctl stop firewalld                                 ### or allow vsftp port pass the firewall ###
+
+or
+-# firewall-cmd --permanent --add-service=vsftp               ### or ftp ###
+
+################################################################################################
+################################################################################################
+
+
+CLIENT SERVER FTP SETUP :
+
+-# yum install ftp
+
+################################################################################################
+
+Transfer files :
+
+-# ftp 192.168.1.10 << IP of the REMOTE SERVER >>
+
+	<< Enter username/password >>
+
+
+-# put <file_name>
+
+-# mput <file_name>                     << to transfer multiple files >>
+
+################################################################################################
+################################################################################################
+
+
+
+
+
+
+
+
+
+
+################################################################################################
+################################################################################################
+SFTP Configuration: 1st method
+
+Allowing a specific user or another developer access to just a directory out several directories in the web server:
+
+################################################################################################
+
+-# useradd -s /sbin/nologin sftpuser
+
+-# passwd sftpuser
+
+################################################################################################
+
+-# vim /etc/ssh/sshd_config
+
+<<in editor>>
+<< add this line blow 'Subsystem' >>
+------------------------------------------------------------------------------------
+Subsystem	sftp	/user/lib/openssh/sftp-server
+Match User sftpuser
+	ForceCommand internal-sftp
+	ChrootDirectpry /var/www/
+	AllowTcpForwarding no
+	XllForwarding no
+
+------------------------------------------------------------------------------------
+################################################################################################
+
+-# systemctl restart sshd
+
+-# curl ifconfig.me
+
+################################################################################################
+################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+################################################################################################
+################################################################################################
+
+SFTP CONFIGURATION : 2nd METHOD **************
+
+SFTP WITH CHROOT JAIL PERMISSION :
+################################################################################################
+
+-# yum install vsftpd -y
+
+################################################################################################
+create a user and group
+
+-# groupadd sftpgroup
+
+-# useradd -G sftpgroup -s /sbin/nologin sftpuser                          << can put in '/sbin/false' >>
+
+-# passwd sftpuser
+
+################################################################################################
+
+create a directory :
+
+-# mkdir -p /var/www/sftpgroup/sftpuser
+
+
+################################################################################################
+creat a file :
+
+-# mkdir /var/www/sftpgroup/sftpuser/test
+
+################################################################################################
+change the owner of the file (test) :
+
+-# chown -R stfpuser /var/www/sftpgroup/sftpuser/test
+
+-# usermod -d /var/www/sftpgroup/sftpuser sftpuser
+
+################################################################################################
+change sshd_config file
+
+-# vim /etc/ssh/sshd_config
+
+<< in editor >>
+<< modify and add lines >>
+------------------------------------------------------------------------------------
+:se nu << go to line 146 >>
+
+<< make that line as comment >>
+
+#Subsystem	sftp	/usr/libexec/openssh/sftp-server   << add ' # ' and the beginning of the line >>
+
+
+<< add this lines blow it >>
+
+Subsystem 	sftp	internal-sftp
+
+
+<< add this line at the end >>
+
+# for chroot sftp#
+Match	Group	sftpgroup
+	ChrootDirectory	%h
+	ForceCommand	internal-sftp
+	XllForwarding	no
+	AllowTcpForwarding 	no
+
+------------------------------------------------------------------------------------
+################################################################################################
+
+
+-# systemctl restart sshd
+
+-# systemctl enable sshd
+
+
+################################################################################################
+now go to =other VM and ;
+
+-# sftp username@192.168.1.10                               << servers IP >>
+
+
+
+################################################################################################
+################################################################################################

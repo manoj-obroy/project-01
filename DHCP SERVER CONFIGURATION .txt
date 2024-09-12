@@ -1,0 +1,214 @@
+DHCP SERVER CONFIGURATION :
+
+1) SERVER PC
+2) CLIENT-01
+3) CLIENT-02
+
+#############################################################################################
+
+IN SERVER PC :
+
+-# yum install dhcp -y
+
+#############################################################################################
+
+DO THIS ON ALL YOUR VMs :
+
+go to network adapter setting > change NAT to HOSTONLY >
+
+Go to your VMware / oracal > go to virtual network setting > change the network connection to HOST-ONLY 
+
+#############################################################################################
+
+Check for the proper connectivity on all Machines :
+
+-# ifup enp0s3 (what ever the network name it got in ifonfig)
+
+ #############################################################################################
+
+Try to ping all the machines in then Main Server :
+
+-# ping 192.168.1.103
+
+#############################################################################################
+
+	MAKE YOUR SERVER IP ADDRESS A " STATIC IP ADDRESS "
+
+-# nmtui
+
+-# systemctl restart network
+
+#############################################################################################
+
+CONFIGURE THE DHCP FILE :
+
+
+-# vim /etc/dhcp/dhcp.conf
+
+### there will be a sample file present in this file. copy that directory [ /usr/share/doc/dhcp-server/dhcp.conf.example ] or go there ###
+
+-# cp -r /usr/share/doc/dhcp-4.2.5/dhcpd.conf.example /etc/dhcp/dhcpd.conf
+
+#############################################################################################
+
+CONFIGURE THIS FILE :
+
+-# vim /etc/dhcp/dhcpd.conf
+
+--------------------------------------------------------------------------
+<<in editor>>
+<< find this line and make this changes in the para >>
+
+# A slightly different configuration for an internal subnet
+
+subnet 192.168.1.0 netmask 255.255.255.0                      ### put your SERVERS IP ADDR AND NETMASK ###
+range 192.168.1.1 192.168.1.10;                             ### rang is from where to where your range shall be ###
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+NOTE :
+	IF YOU DONT HAVE A DOMAIN NAME THEN, COMMENT THE BELLOW LINES 
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#  option domain-name-servers ns1.internal.example.org;
+#  option domain-name "internal.example.org";
+#  option routers 10.5.5.1;
+#  option broadcast-address 10.5.5.31;
+  default-lease-time 600;
+  max-lease-time 7200;
+
+--------------------------------------------------------------------------
+#############################################################################################
+
+START THE DHCP SERVICES :
+
+-# systemctl start dhcpd
+
+-# systemctl enable dhcpd
+
+-# systemctl status dhcpd
+
+#############################################################################################
+
+config the FIREWALL :
+
+-# firewall-cmd --permanent --add-service=dhcp
+
+-# firewall-cmd --reload
+
+-# firewall-cmd --list-all
+
+#############################################################################################
+
+go to VMWares or Oracles Virtual Network editor,
+select ' HOST-ONLY ' network,
+uncheck the ' Local DHCP service ' option.
+
+#############################################################################################
+
+NOW RESTART NETWORK MANAGER SERVICES IN ALL THE MACHINES :
+
+-# systemctl restart NetworkManager
+
+-# ifup enp0s3
+
+#############################################################################################
+#############################################################################################
+
+NOW,
+
+IF YOU WAMT TO EXTEND THE RANGE OF IP ADDRESS OR CHANGE THE RANGE,
+
+GO TO YOUR SERVER MACHINE,
+
+-# vim /etc/dhcp/dhcpd.conf
+
+--------------------------------------------------------------------------
+<< change this line >>
+
+
+range 192.168.1.1 192.168.1.10
+
+TO
+
+range 192.168.1.100 192.168.1.150                 ### anyth range you want ###
+
+--------------------------------------------------------------------------
+#############################################################################################
+
+RESTART YOUR NETWORK MANAGER IN ALL THE MACHINES
+
+-# systemctl restart NetworkManager
+
+-# ifup enp0s3
+
+#############################################################################################
+#############################################################################################
+
+
+
+
+
+#############################################################################################
+
+ASSIGNING A STATIC IP ADDRESS :
+
+1) get the Machines Address to which you want to put a static address
+
+go to the specific Machine
+-#ip a
+in 'enp0s3' interface there will be link/ether,
+next to that there will be a address something like 00:0c:29:15:39:6A
+copy that address
+go back to the SERVER MACHINE
+
+
+-# vim /etc/dhcp/dhcpd.conf
+
+--------------------------------------------------------------------------
+<< go to this line and change the lines with >>
+
+host fantasia {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address fantasia.fugue.com;
+
+with ............
+
+host client-01 {                                                    ### your client machines hostname ###
+  hardware ethernet 00:0c:29:15:39:6A;                              ### that client machines MAC address ###
+  fixed-address 192.168.1.125;                       ### static addr you wanna give to this client machine ###
+
+--------------------------------------------------------------------------
+#############################################################################################
+
+NOW RESTART YOUR SERVER MACHINE AND ALL CLIENT MACHINES
+
+-# systemctl restart NetworkManager
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

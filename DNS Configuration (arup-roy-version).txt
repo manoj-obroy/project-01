@@ -1,0 +1,380 @@
+Configure your DNS server:
+############################################################################################################
+############################################################################################################
+
+
+disable the SELINUX first:
+
+vi /etc/selinux/config
+
+
+###########################################################################################################
+
+SETUP PRIMARY (MASTER) DNS SERVER:
+
+
+## set your hostname = server-line
+## get a domain name = manoj-blr.com
+## IP ADDRs          = 192.168.1.101
+
+
+
+#################################################################################
+
+-# yum install bind bind-utils -y
+
+
+
+#################################################################################
+
+-# vi /etc/named.conf
+
+----------------------------------------------------------------------------------
+options {
+        listen-on port 53 { 127.0.0.1; 192.168.1.101; };                         ###server-line DNS IP###
+        listen-on-v6 port 53 { ::1; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        recursing-file  "/var/named/data/named.recursing";
+        secroots-file   "/var/named/data/named.secroots";
+        allow-query     { localhost; 192.168.1.0/24;};                          ###IP RANGE###
+        allow-transfer  { localhost; 192.168.1.102; };                           ###secondary-line DNS IP###
+
+----------------------------------------------------------------------------------
+
+        dnssec-validation yes;
+        dnssec-lookaside auto;                                                   ###add this line###
+
+----------------------------------------------------------------------------------
+## Add this lines:
+
+zone "manoj-blr.com" IN {
+type master;
+file "forward.manoj-blr";
+allow-update { none; };
+};
+
+zone "1.168.192.in-addr.arpa" IN {
+type master;
+file "reverse.manoj-blr";
+allow-update { none; };
+};
+
+
+
+#################################################################################
+
+vi /var/named/forward.manoj-blr
+
+
+$TTL 86400
+@       IN      SOA     server-line.manoj-blr.com. root.manoj-blr.com.(
+                2011071001      ;Serial
+                8600            ;Refresh
+                1800            ;Retry
+                604800          ;Expire
+                86400           ;Minimum TTL
+)
+@       IN      NS      server-line.manoj-blr.com.
+@       IN      NS      secondary-line.manoj-blr.com.
+@       IN      A       192.168.1.101
+@       IN      A       192.168.1.102
+@       IN      A       192.168.1.103
+server-line     IN      A       192.168.1.101
+secondary-line  IN      A       192.168.1.102
+client-line     IN      A       192.168.1.103
+
+
+
+####################################################################################
+
+vi /var/named/reverse.manoj-blr
+
+
+$TTL 86400
+@       IN      SOA     server-line.manoj-blr.com. root.manoj-blr.com.(
+                2011071001      ;Serial
+                8600            ;Refresh
+                1800            ;Retry
+                604800          ;Expire
+                86400           ;Minimum TTL
+)
+@       IN      NS      server-line.manoj-blr.com.
+@       IN      NS      secondary-line.manoj-blr.com.
+@       IN      PTR     manoj-blr.com.
+server-line       IN      A       192.168.1.101
+secondary-line    IN      A       192.168.1.102
+client-line       IN      A       192.168.1.103
+101       IN      PTR     server-line.manoj-blr.com.
+102       IN      PTR     secondary-line.manoj-blr.com.
+103       IN      PTR     client-line.manoj-blr.com.
+
+
+
+###################################################################################
+
+
+-# systemctl enable named
+
+-#systemctl start named
+
+
+----------------------------------------------------------------------------------
+
+-# firewall-cmd --permanent --add-port=53/tcp
+
+-# firewall-cmd --permanent --add-port=53/udp
+
+-# firewall-cmd --reload
+
+
+###################################################################################
+
+###Add this following line in this file###
+
+-# vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+
+
+DNS="192.168.1.101"
+
+
+###################################################################################
+
+-# chgrp named -R /var/named
+
+-# chown -v root:named /etc/named.conf
+
+-# restorecon -rv /var/named
+
+-# restorecon /etc/named.conf
+
+-# systemctl restart named.service && systemctl status named.service            ###(Restarting Service)###
+
+
+
+###################################################################################
+
+
+-# named-checkzone manoj-blr.com. /var/named/forward.manoj-blr
+
+
+-# named-checkzone manoj-blr.com. /var/named/reverse.manoj-blr
+
+
+
+###################################################################################
+
+###Add this following line in this file###
+
+-# vi /etc/resolv.conf 
+
+
+nameserver      192.168.1.101
+
+
+
+###################################################################################
+
+
+-# systemctl restart network
+
+
+
+###################################################################################
+
+
+-# dig CentOS-NS.manoj-blr.com
+
+-# nslookup 192.168.1.101
+
+-# nslookup 192.168.1.102
+
+-# nslookup 192.168.1.103
+
+-# dig @192.168.1.101 A manoj-blr.com
+
+
+
+############################################################################################################
+############################################################################################################
+
+SETUP SECONDARY (SLAVE) DNS SERVER :
+
+
+## set your hostname = secondary-line
+## get a domain name = manoj-blr.com
+## IP ADDRs          = 192.168.1.102
+
+
+
+###################################################################################
+
+- yum install bind bind-utils -y
+
+
+
+###################################################################################
+
+-# vi /ect/named.conf
+
+
+----------------------------------------------------------------------------------
+options {
+        listen-on port 53 { 127.0.0.1; 192.168.1.102; };                         ###secondary-line DNS IP###
+        listen-on-v6 port 53 { ::1; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        recursing-file  "/var/named/data/named.recursing";
+        secroots-file   "/var/named/data/named.secroots";
+        allow-query     { localhost; 192.168.1.0./24;};                          ###IP RANGE###
+
+----------------------------------------------------------------------------------
+
+        dnssec-validation yes;
+        dnssec-lookaside auto;                                                   ###add this line###
+
+----------------------------------------------------------------------------------
+## Add this lines:
+
+zone "manoj-blr.com" IN {
+type slave;
+file "slaves/manoj-blr.fwd";
+master { 192.168.1.101; };
+};
+
+zone "1.168.192.in-addr.arpa" IN {
+type master;
+file "slaves/manoj-blr.rev";
+master { 192.168.1.101; };
+};
+
+
+
+#################################################################################
+
+-# systemctl enable named
+
+-# systemctl start named
+
+-# ls /var/named/slaves
+
+
+
+#################################################################################
+
+###Add this following line in this file###
+
+
+-# vi /ect/sysconfig/network-scripts/ifcfg-enp0s3
+
+
+DNS="192.168.1.101"
+DNS="192.168.1.102"
+
+
+
+#################################################################################
+
+
+###Add this following line in this file###
+
+
+-# vi /etc/resolv.conf
+
+nameserver      192.168.1.101
+nameserver      192.168.1.102
+
+
+
+#################################################################################
+
+-# systemctl start named
+
+
+-# firewall-cmd --permanent --add-port=53/tcp
+
+
+-# firewall-cmd --reload
+
+
+----------------------------------------------------------------------------------
+
+-# chgrp named -R /var/named
+
+-# chown -v root:named /etc/named.conf
+
+-# restorecon -rv /var/named
+
+-# restorecon /etc/named.conf
+
+-# systemctl restart named.service && systemctl status named.service            ###(Restarting Service)###
+
+
+
+#################################################################################
+
+
+-# dig server-line.manoj-blr.com
+
+-# dig secondary-line.manoj-blr.com
+
+-# nslookup manoj-blr.com
+
+
+
+##########################################################################################################
+##########################################################################################################
+SETUP CLIENT DNS SERVERS:
+
+## set your hostname = client-line
+## get a domain name = manoj-blr.com
+## IP ADDRs          = 192.168.1.103
+
+
+
+#################################################################################
+
+###Add this following line in this file###
+
+
+-# vi /ect/resolv.conf
+
+
+nameserver      192.168.1.101
+nameserver      192.168.1.102
+
+
+
+#################################################################################
+
+
+-# dig server-line.manoj-blr.com
+
+-# dig secondary-line.manoj-blr.com
+
+-# dig client=-line.manoj-blr.com
+
+-# nslookup manoj-blr.com
+
+
+
+#########################################################################################################
+#########################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
